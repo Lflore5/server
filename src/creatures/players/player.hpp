@@ -41,6 +41,8 @@
 #include "creatures/players/cyclopedia/player_title.hpp"
 #include "creatures/players/vip/player_vip.hpp"
 
+import game_movement;
+
 class House;
 class NetworkMessage;
 class Weapon;

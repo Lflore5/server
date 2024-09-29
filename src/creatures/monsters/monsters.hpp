@@ -13,6 +13,8 @@
 #include "creatures/creature.hpp"
 #include "declarations.hpp"
 
+import game_movement;
+
 class Loot {
 public:
 	Loot() = default;

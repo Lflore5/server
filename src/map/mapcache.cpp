@@ -7,8 +7,6 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#include "pch.hpp"
-
 #include "mapcache.hpp"
 
 #include "game/movement/teleport.hpp"
@@ -23,6 +21,8 @@
 #include "io/filestream.hpp"
 
 #include "io/iomap.hpp"
+
+import game_movement;
 
 static phmap::flat_hash_map<size_t, std::shared_ptr<BasicItem>> items;
 static phmap::flat_hash_map<size_t, std::shared_ptr<BasicTile>> tiles;

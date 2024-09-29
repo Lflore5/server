@@ -7,8 +7,6 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#include "pch.hpp"
-
 #include "lua/functions/creatures/player/player_functions.hpp"
 
 #include "creatures/combat/spells.hpp"
@@ -31,6 +29,8 @@
 #include "enums/account_errors.hpp"
 #include "enums/account_type.hpp"
 #include "enums/account_coins.hpp"
+
+import game_movement;
 
 int PlayerFunctions::luaPlayerSendInventory(lua_State* L) {
 	// player:sendInventory()

@@ -13,6 +13,8 @@
 
 #include "enums/player_icons.hpp"
 
+import game_movement;
+
 class Creature;
 class Player;
 class PropStream;

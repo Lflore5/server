@@ -7,10 +7,10 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#include "pch.hpp"
-
 #include "server/network/message/networkmessage.hpp"
 #include "items/containers/container.hpp"
+
+import game_movement;
 
 int32_t NetworkMessage::decodeHeader() {
 	// Ensure there are enough bytes to read the header (2 bytes)

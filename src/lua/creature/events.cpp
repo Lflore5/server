@@ -7,12 +7,12 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#include "pch.hpp"
-
 #include "lua/creature/events.hpp"
 #include "utils/tools.hpp"
 #include "items/item.hpp"
 #include "creatures/players/player.hpp"
+
+import game_movement;
 
 Events::Events() :
 	scriptInterface("Event Interface") {

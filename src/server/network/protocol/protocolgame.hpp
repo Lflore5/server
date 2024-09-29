@@ -17,6 +17,8 @@
 #include "creatures/players/cyclopedia/player_cyclopedia.hpp"
 #include "creatures/players/cyclopedia/player_title.hpp"
 
+import game_movement;
+
 class NetworkMessage;
 class Player;
 class VIPGroup;

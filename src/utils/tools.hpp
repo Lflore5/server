@@ -12,8 +12,10 @@
 #include "utils/utils_definitions.hpp"
 #include "declarations.hpp"
 #include "enums/item_attribute.hpp"
-#include "game/movement/position.hpp"
+#include "enums/direction.hpp"
 #include "enums/object_category.hpp"
+
+import game_movement;
 
 namespace pugi {
 	class xml_parse_result;

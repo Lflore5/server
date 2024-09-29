@@ -14,6 +14,8 @@
 #include "items/item.hpp"
 #include "utils/tools.hpp"
 
+import game_movement;
+
 class Creature;
 class Teleport;
 class TrashHolder;

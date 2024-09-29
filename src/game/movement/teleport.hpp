@@ -11,6 +11,8 @@
 
 #include "items/tile.hpp"
 
+import game_movement;
+
 class Teleport final : public Item, public Cylinder {
 public:
 	explicit Teleport(uint16_t type) :

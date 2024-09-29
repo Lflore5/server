@@ -16,6 +16,8 @@
 #include "lua/creature/talkaction.hpp"
 #include "lua/scripts/scripts.hpp"
 
+import game_movement;
+
 class InstantSpell;
 class RuneSpell;
 class Spell;

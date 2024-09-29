@@ -7,11 +7,11 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#include "pch.hpp"
-
 #include "astarnodes.hpp"
 #include "creatures/monsters/monster.hpp"
 #include "creatures/combat/combat.hpp"
+
+import game_movement;
 
 AStarNodes::AStarNodes(uint32_t x, uint32_t y, int_fast32_t extraCost) :
 #if defined(__AVX2__) || defined(__SSE2__)

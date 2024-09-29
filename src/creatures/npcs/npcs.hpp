@@ -12,6 +12,8 @@
 #include "creatures/creature.hpp"
 #include "lib/di/container.hpp"
 
+import game_movement;
+
 class Shop {
 public:
 	Shop() = default;

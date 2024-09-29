@@ -7,8 +7,6 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#include "pch.hpp"
-
 #include "creatures/interactions/chat.hpp"
 #include "game/game.hpp"
 #include "game/scheduling/dispatcher.hpp"
@@ -20,6 +18,8 @@
 #include "server/network/protocol/protocolstatus.hpp"
 #include "creatures/players/wheel/player_wheel.hpp"
 #include "lua/global/lua_timer_event_descr.hpp"
+
+import game_movement;
 
 class Creature;
 int GlobalFunctions::luaDoPlayerAddItem(lua_State* L) {

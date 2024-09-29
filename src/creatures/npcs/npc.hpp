@@ -15,6 +15,8 @@
 #include "items/tile.hpp"
 #include "lib/di/container.hpp"
 
+import game_movement;
+
 class Creature;
 class Game;
 class SpawnNpc;

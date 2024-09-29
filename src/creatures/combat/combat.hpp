@@ -14,6 +14,8 @@
 #include "declarations.hpp"
 #include "map/map.hpp"
 
+import game_movement;
+
 class Condition;
 class Creature;
 class Item;

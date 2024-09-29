@@ -13,8 +13,9 @@
 #include "declarations.hpp"
 #include "lua/scripts/luascript.hpp"
 
+import game_movement;
+
 class Action;
-class Position;
 
 class Action : public Script {
 public:

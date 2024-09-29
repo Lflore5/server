@@ -7,11 +7,11 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#include "pch.hpp"
-
 #include "lua/functions/core/network/network_message_functions.hpp"
 #include "creatures/players/player.hpp"
 #include "server/network/protocol/protocolstatus.hpp"
+
+import game_movement;
 
 int NetworkMessageFunctions::luaNetworkMessageCreate(lua_State* L) {
 	// NetworkMessage()

@@ -11,10 +11,11 @@
 
 #include "creatures/creature.hpp"
 
+import game_movement;
+
 class Player;
 class Monster;
 class Npc;
-struct Position;
 
 struct SpectatorsCache {
 	struct FloorData {

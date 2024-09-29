@@ -13,6 +13,8 @@
 #include "declarations.hpp"
 #include "items/tile.hpp"
 
+import game_movement;
+
 class Creature;
 class Game;
 

@@ -11,6 +11,8 @@
 
 #include "creatures/creature.hpp"
 
+import game_movement;
+
 class Creature;
 
 class CreatureCallback {

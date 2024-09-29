@@ -7,12 +7,12 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#include "pch.hpp"
-
 #include "creatures/npcs/npcs.hpp"
 #include "lua/functions/creatures/npc/npc_type_functions.hpp"
 #include "lua/scripts/scripts.hpp"
 #include "game/game.hpp"
+
+import game_movement;
 
 void NpcTypeFunctions::createNpcTypeShopLuaTable(lua_State* L, const std::vector<ShopBlock> &shopVector) {
 	lua_createtable(L, shopVector.size(), 0);

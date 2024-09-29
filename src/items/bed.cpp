@@ -7,13 +7,13 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#include "pch.hpp"
-
 #include "items/bed.hpp"
 #include "game/game.hpp"
 #include "io/iologindata.hpp"
 #include "game/scheduling/dispatcher.hpp"
 #include "game/scheduling/save_manager.hpp"
+
+import game_movement;
 
 BedItem::BedItem(uint16_t id) :
 	Item(id) {

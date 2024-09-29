@@ -9,21 +9,22 @@
 
 #pragma once
 
-#include "enums/lua_variant_type.hpp"
-#include "enums/direction.hpp"
-
 #ifndef USE_PRECOMPILED_HEADERS
 	#include <cstdint>
-	#include <string>
 #endif
 
-import game_movement;
+enum Direction : uint8_t {
+	DIRECTION_NORTH = 0,
+	DIRECTION_EAST = 1,
+	DIRECTION_SOUTH = 2,
+	DIRECTION_WEST = 3,
 
-struct LuaVariant {
-	LuaVariantType_t type = VARIANT_NONE;
-	std::string text;
-	std::string instantName;
-	std::string runeName;
-	Position pos;
-	uint32_t number = 0;
+	DIRECTION_DIAGONAL_MASK = 4,
+	DIRECTION_SOUTHWEST = DIRECTION_DIAGONAL_MASK | 0,
+	DIRECTION_SOUTHEAST = DIRECTION_DIAGONAL_MASK | 1,
+	DIRECTION_NORTHWEST = DIRECTION_DIAGONAL_MASK | 2,
+	DIRECTION_NORTHEAST = DIRECTION_DIAGONAL_MASK | 3,
+
+	DIRECTION_LAST = DIRECTION_NORTHEAST,
+	DIRECTION_NONE = 8,
 };

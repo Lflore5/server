@@ -12,7 +12,9 @@
 #include "items/containers/container.hpp"
 #include "declarations.hpp"
 #include "map/house/housetile.hpp"
-#include "game/movement/position.hpp"
+#include "enums/direction.hpp"
+
+import game_movement;
 
 class House;
 class BedItem;

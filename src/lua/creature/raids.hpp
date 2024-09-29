@@ -11,8 +11,10 @@
 
 #include "utils/utils_definitions.hpp"
 #include "declarations.hpp"
-#include "game/movement/position.hpp"
+#include "enums/direction.hpp"
 #include "lua/global/baseevents.hpp"
+
+import game_movement;
 
 struct MonsterSpawn {
 	MonsterSpawn(std::string initName, uint32_t initMinAmount, uint32_t initMaxAmount) :

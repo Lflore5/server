@@ -7,12 +7,12 @@
  * Website: https://docs.opentibiabr.com/
  */
 
-#include "pch.hpp"
-
 #include "game/game.hpp"
 #include "creatures/creature.hpp"
 #include "lua/functions/creatures/creature_functions.hpp"
 #include "map/spectators.hpp"
+
+import game_movement;
 
 int CreatureFunctions::luaCreatureCreate(lua_State* L) {
 	// Creature(id or name or userdata)

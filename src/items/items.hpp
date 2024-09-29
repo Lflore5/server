@@ -12,7 +12,9 @@
 #include "config/configmanager.hpp"
 #include "utils/utils_definitions.hpp"
 #include "declarations.hpp"
-#include "game/movement/position.hpp"
+#include "enums/direction.hpp"
+
+import game_movement;
 
 struct Abilities {
 public:

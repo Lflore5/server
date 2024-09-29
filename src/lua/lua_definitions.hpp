@@ -9,7 +9,9 @@
 
 #pragma once
 
-#include "game/movement/position.hpp"
+#include "enums/direction.hpp"
+
+import game_movement;
 
 // Enums
 enum {

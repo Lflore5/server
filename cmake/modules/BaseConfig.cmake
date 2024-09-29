@@ -1,16 +1,25 @@
-cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.29)
 
 # *****************************************************************************
 # CMake Features
 # *****************************************************************************
-set(CMAKE_CXX_STANDARD 20)
-set(GNUCXX_MINIMUM_VERSION 11)
-set(MSVC_MINIMUM_VERSION "19.32")
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS NO)
+set(GNUCXX_MINIMUM_VERSION 14)
+set(CLANG_MINIMUM_VERSION 18)
+set(MSVC_MINIMUM_VERSION "19.32")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 set(Boost_NO_WARN_NEW_VERSIONS ON)
+set(CMAKE_EXPERIMENTAL_CXX_MODULE_DYNDYNAPI ON)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+if (MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /external:W0 /external:anglebrackets /external:templates-")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /openmp")
+endif()
 
 # Make will print more details
 set(CMAKE_VERBOSE_MAKEFILE OFF)
@@ -63,6 +72,14 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     endif()
 endif()
 
+# === Minimum required version for clang ===
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message("-- Compiler: Clang - Version: ${CMAKE_CXX_COMPILER_VERSION}")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS CLANG_MINIMUM_VERSION)
+        message(FATAL_ERROR "Clang version must be at least ${CLANG_MINIMUM_VERSION}!")
+    endif()
+endif()
+
 # *****************************************************************************
 # Sanity Checks
 # *****************************************************************************
@@ -72,7 +89,7 @@ option(DEBUG_LOG "Enable Debug Log" OFF)
 option(ASAN_ENABLED "Build this target with AddressSanitizer" OFF)
 option(BUILD_STATIC_LIBRARY "Build using static libraries" OFF)
 option(SPEED_UP_BUILD_UNITY "Compile using build unity for speed up build" ON)
-option(USE_PRECOMPILED_HEADER "Compile using precompiled header" ON)
+option(USE_PRECOMPILED_HEADERS "Compile using precompiled header" ON)
 
 # === TOGGLE_BIN_FOLDER ===
 if(TOGGLE_BIN_FOLDER)
@@ -132,12 +149,12 @@ else()
     log_option_disabled("SPEED_UP_BUILD_UNITY")
 endif(SPEED_UP_BUILD_UNITY)
 
-# === USE_PRECOMPILED_HEADER ===
-if(USE_PRECOMPILED_HEADER)
-    log_option_enabled("USE_PRECOMPILED_HEADER")
+# === USE_PRECOMPILED_HEADERS ===
+if(USE_PRECOMPILED_HEADERS)
+    log_option_enabled("USE_PRECOMPILED_HEADERS")
 else()
-    log_option_disabled("USE_PRECOMPILED_HEADER")
-endif(USE_PRECOMPILED_HEADER)
+    log_option_disabled("USE_PRECOMPILED_HEADERS")
+endif(USE_PRECOMPILED_HEADERS)
 
 # *****************************************************************************
 # Compiler Options
@@ -172,6 +189,19 @@ endfunction()
 function(setup_target TARGET_NAME)
     if (MSVC AND BUILD_STATIC_LIBRARY)
         set_property(TARGET ${TARGET_NAME} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    endif()
+endfunction()
+
+# === OpenMP ===
+function(setup_open_mp target_name)
+    if(OPTIONS_ENABLE_OPENMP)
+        log_option_enabled("openmp")
+        find_package(OpenMP)
+        if(OpenMP_CXX_FOUND)
+            target_link_libraries(${target_name} PUBLIC OpenMP::OpenMP_CXX)
+        endif()
+    else()
+        log_option_disabled("openmp")
     endif()
 endfunction()
 
