@@ -8,21 +8,13 @@
  */
 
 #include "io/iomarket.hpp"
+
+#include "database/database.hpp"
 #include "database/databasetasks.hpp"
 #include "io/iologindata.hpp"
 #include "game/game.hpp"
 #include "game/scheduling/dispatcher.hpp"
 #include "game/scheduling/save_manager.hpp"
-
-uint8_t IOMarket::getTierFromDatabaseTable(const std::string &string) {
-	auto tier = static_cast<uint8_t>(std::atoi(string.c_str()));
-	if (tier > g_configManager().getNumber(FORGE_MAX_ITEM_TIER)) {
-		g_logger().error("{} - Failed to get number value {} for tier table result", __FUNCTION__, tier);
-		return 0;
-	}
-
-	return tier;
-}
 
 MarketOfferList IOMarket::getActiveOffers(MarketAction_t action) {
 	MarketOfferList offerList;
@@ -43,17 +35,17 @@ MarketOfferList IOMarket::getActiveOffers(MarketAction_t action) {
 
 	do {
 		MarketOffer offer;
-		offer.itemId = result->getNumber<uint16_t>("itemtype");
-		offer.amount = result->getNumber<uint16_t>("amount");
-		offer.price = result->getNumber<uint64_t>("price");
-		offer.timestamp = result->getNumber<uint32_t>("created") + marketOfferDuration;
-		offer.counter = result->getNumber<uint32_t>("id") & 0xFFFF;
-		if (result->getNumber<uint16_t>("anonymous") == 0) {
+		offer.itemId = result->getU16("itemtype");
+		offer.amount = result->getU16("amount");
+		offer.price = result->getU64("price");
+		offer.timestamp = result->getU32("created") + marketOfferDuration;
+		offer.counter = result->getU32("id") & 0xFFFF;
+		if (result->getU16("anonymous") == 0) {
 			offer.playerName = result->getString("player_name");
 		} else {
 			offer.playerName = "Anonymous";
 		}
-		offer.tier = getTierFromDatabaseTable(result->getString("tier"));
+		offer.tier = result->getU8("tier");
 		offerList.push_back(offer);
 	} while (result->next());
 	return offerList;
@@ -75,16 +67,16 @@ MarketOfferList IOMarket::getActiveOffers(MarketAction_t action, uint16_t itemId
 	do {
 		MarketOffer offer;
 		offer.itemId = itemId;
-		offer.amount = result->getNumber<uint16_t>("amount");
-		offer.price = result->getNumber<uint64_t>("price");
-		offer.timestamp = result->getNumber<uint32_t>("created") + marketOfferDuration;
-		offer.counter = result->getNumber<uint32_t>("id") & 0xFFFF;
-		if (result->getNumber<uint16_t>("anonymous") == 0) {
+		offer.amount = result->getU16("amount");
+		offer.price = result->getU64("price");
+		offer.timestamp = result->getU32("created") + marketOfferDuration;
+		offer.counter = result->getU32("id") & 0xFFFF;
+		if (result->getU16("anonymous") == 0) {
 			offer.playerName = result->getString("player_name");
 		} else {
 			offer.playerName = "Anonymous";
 		}
-		offer.tier = getTierFromDatabaseTable(result->getString("tier"));
+		offer.tier = result->getU8("tier");
 		offerList.push_back(offer);
 	} while (result->next());
 	return offerList;
@@ -105,12 +97,12 @@ MarketOfferList IOMarket::getOwnOffers(MarketAction_t action, uint32_t playerId)
 
 	do {
 		MarketOffer offer;
-		offer.amount = result->getNumber<uint16_t>("amount");
-		offer.price = result->getNumber<uint64_t>("price");
-		offer.timestamp = result->getNumber<uint32_t>("created") + marketOfferDuration;
-		offer.counter = result->getNumber<uint32_t>("id") & 0xFFFF;
-		offer.itemId = result->getNumber<uint16_t>("itemtype");
-		offer.tier = getTierFromDatabaseTable(result->getString("tier"));
+		offer.amount = result->getU16("amount");
+		offer.price = result->getU64("price");
+		offer.timestamp = result->getU32("created") + marketOfferDuration;
+		offer.counter = result->getU32("id") & 0xFFFF;
+		offer.itemId = result->getU16("itemtype");
+		offer.tier = result->getU8("tier");
 		offerList.push_back(offer);
 	} while (result->next());
 	return offerList;
@@ -129,13 +121,13 @@ HistoryMarketOfferList IOMarket::getOwnHistory(MarketAction_t action, uint32_t p
 
 	do {
 		HistoryMarketOffer offer;
-		offer.itemId = result->getNumber<uint16_t>("itemtype");
-		offer.amount = result->getNumber<uint16_t>("amount");
-		offer.price = result->getNumber<uint64_t>("price");
-		offer.timestamp = result->getNumber<uint32_t>("expires_at");
-		offer.tier = getTierFromDatabaseTable(result->getString("tier"));
+		offer.itemId = result->getU16("itemtype");
+		offer.amount = result->getU16("amount");
+		offer.price = result->getU64("price");
+		offer.timestamp = result->getU32("expires_at");
+		offer.tier = result->getU8("tier");
 
-		MarketOfferState_t offerState = static_cast<MarketOfferState_t>(result->getNumber<uint16_t>("state"));
+		MarketOfferState_t offerState = static_cast<MarketOfferState_t>(result->getU16("state"));
 		if (offerState == OFFERSTATE_ACCEPTEDEX) {
 			offerState = OFFERSTATE_ACCEPTED;
 		}
@@ -153,15 +145,15 @@ void IOMarket::processExpiredOffers(DBResult_ptr result, bool) {
 	}
 
 	do {
-		if (!IOMarket::moveOfferToHistory(result->getNumber<uint32_t>("id"), OFFERSTATE_EXPIRED)) {
+		if (!IOMarket::moveOfferToHistory(result->getU32("id"), OFFERSTATE_EXPIRED)) {
 			continue;
 		}
 
-		const uint32_t playerId = result->getNumber<uint32_t>("player_id");
-		const uint16_t amount = result->getNumber<uint16_t>("amount");
-		auto tier = getTierFromDatabaseTable(result->getString("tier"));
-		if (result->getNumber<uint16_t>("sale") == 1) {
-			const ItemType &itemType = Item::items[result->getNumber<uint16_t>("itemtype")];
+		const uint32_t playerId = result->getU32("player_id");
+		const uint16_t amount = result->getU16("amount");
+		auto tier = result->getU8("tier");
+		if (result->getU16("sale") == 1) {
+			const ItemType &itemType = Item::items[result->getU16("itemtype")];
 			if (itemType.id == 0) {
 				continue;
 			}
@@ -212,7 +204,7 @@ void IOMarket::processExpiredOffers(DBResult_ptr result, bool) {
 				g_saveManager().savePlayer(player);
 			}
 		} else {
-			uint64_t totalPrice = result->getNumber<uint64_t>("price") * amount;
+			uint64_t totalPrice = result->getU64("price") * amount;
 
 			std::shared_ptr<Player> player = g_game().getPlayerByGUID(playerId);
 			if (player) {
@@ -247,7 +239,7 @@ uint32_t IOMarket::getPlayerOfferCount(uint32_t playerId) {
 	if (!result) {
 		return 0;
 	}
-	return result->getNumber<int32_t>("count");
+	return result->getU32("count");
 }
 
 MarketOfferEx IOMarket::getOfferByCounter(uint32_t timestamp, uint16_t counter) {
@@ -264,16 +256,16 @@ MarketOfferEx IOMarket::getOfferByCounter(uint32_t timestamp, uint16_t counter) 
 		return offer;
 	}
 
-	offer.id = result->getNumber<uint32_t>("id");
-	offer.type = static_cast<MarketAction_t>(result->getNumber<uint16_t>("sale"));
-	offer.amount = result->getNumber<uint16_t>("amount");
-	offer.counter = result->getNumber<uint32_t>("id") & 0xFFFF;
-	offer.timestamp = result->getNumber<uint32_t>("created");
-	offer.price = result->getNumber<uint64_t>("price");
-	offer.itemId = result->getNumber<uint16_t>("itemtype");
-	offer.playerId = result->getNumber<uint32_t>("player_id");
-	offer.tier = getTierFromDatabaseTable(result->getString("tier"));
-	if (result->getNumber<uint16_t>("anonymous") == 0) {
+	offer.id = result->getU32("id");
+	offer.type = static_cast<MarketAction_t>(result->getU16("sale"));
+	offer.amount = result->getU16("amount");
+	offer.counter = result->getU32("id") & 0xFFFF;
+	offer.timestamp = result->getU32("created");
+	offer.price = result->getU64("price");
+	offer.itemId = result->getU16("itemtype");
+	offer.playerId = result->getU32("player_id");
+	offer.tier = result->getU8("tier");
+	if (result->getU16("anonymous") == 0) {
 		offer.playerName = result->getString("player_name");
 	} else {
 		offer.playerName = "Anonymous";
@@ -325,13 +317,14 @@ bool IOMarket::moveOfferToHistory(uint32_t offerId, MarketOfferState_t state) {
 	}
 
 	appendHistory(
-		result->getNumber<uint32_t>("player_id"),
-		static_cast<MarketAction_t>(result->getNumber<uint16_t>("sale")),
-		result->getNumber<uint16_t>("itemtype"),
-		result->getNumber<uint16_t>("amount"),
-		result->getNumber<uint64_t>("price"),
+		result->getU32("player_id"),
+		static_cast<MarketAction_t>(result->getU16("sale")),
+		result->getU16("itemtype"),
+		result->getU16("amount"),
+		result->getU64("price"),
 		getTimeNow(),
-		getTierFromDatabaseTable(result->getString("tier")), state
+		result->getU8("tier"),
+		state
 	);
 	return true;
 }
@@ -345,24 +338,26 @@ void IOMarket::updateStatistics() {
 		OFFERSTATE_ACCEPTED
 	);
 
-	DBResult_ptr result = g_database().storeQuery(query);
+	auto result = g_database().getResult(query);
 	if (!result) {
 		return;
 	}
 
-	do {
+	for (mysqlx::Row row : result->fetchAll()) {
 		MarketStatistics* statistics = nullptr;
-		const auto tier = getTierFromDatabaseTable(result->getString("tier"));
-		auto itemId = result->getNumber<uint16_t>("itemtype");
-		if (result->getNumber<uint16_t>("sale") == MARKETACTION_BUY) {
+		auto sale = Database::getU32(row[0]); // `sale` is at index 0
+		uint16_t itemId = Database::getU32(row[1]); // `itemtype` is at index 1
+		uint8_t tier = Database::getU8(row[6]); // `tier` is at index 6
+
+		if (sale == MARKETACTION_BUY) {
 			statistics = &purchaseStatistics[itemId][tier];
 		} else {
 			statistics = &saleStatistics[itemId][tier];
 		}
 
-		statistics->numTransactions = result->getNumber<uint32_t>("num");
-		statistics->lowestPrice = result->getNumber<uint64_t>("min");
-		statistics->totalPrice = result->getNumber<uint64_t>("sum");
-		statistics->highestPrice = result->getNumber<uint64_t>("max");
-	} while (result->next());
+		statistics->numTransactions = Database::getU32(row[2]); // `num` is at index 2
+		statistics->lowestPrice = Database::getU64(row[3]); // `min` is at index 3
+		statistics->highestPrice = Database::getU64(row[4]); // `max` is at index 4
+		statistics->totalPrice = Database::getDouble(row[5]); // `sum` is at index 5
+	}
 }

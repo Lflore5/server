@@ -1,3 +1,36 @@
 function onUpdateDatabase()
-	return false -- true = There are others migrations file | false = this is the last migration file
+	logger.info("Updating database to version 47 (support to MySQLX DevAPI)")
+
+	db.query([[
+		ALTER TABLE `player_charms`
+			CHANGE COLUMN `tracker list` tracker_list BLOB NULL;
+	]])
+	db.query("ALTER TABLE players MODIFY COLUMN soul TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE players MODIFY COLUMN randomize_mount TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE player_bosstiary MODIFY COLUMN removeTimes TINYINT UNSIGNED NOT NULL DEFAULT 1;")
+
+	db.query("ALTER TABLE players MODIFY COLUMN lookbody TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE players MODIFY COLUMN lookfeet TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE players MODIFY COLUMN lookhead TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE players MODIFY COLUMN looklegs TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE players MODIFY COLUMN looktype TINYINT UNSIGNED NOT NULL DEFAULT 136;")
+	db.query("ALTER TABLE players MODIFY COLUMN lookaddons TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE players MODIFY COLUMN posz TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+
+	db.query("ALTER TABLE players MODIFY COLUMN blessings TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE players MODIFY COLUMN blessings1 TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE players MODIFY COLUMN blessings2 TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE players MODIFY COLUMN blessings3 TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE players MODIFY COLUMN blessings4 TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE players MODIFY COLUMN blessings5 TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE players MODIFY COLUMN blessings6 TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE players MODIFY COLUMN blessings7 TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	db.query("ALTER TABLE players MODIFY COLUMN blessings8 TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+
+	db.query("ALTER TABLE player_prey MODIFY COLUMN bonus_rarity TINYINT UNSIGNED NOT NULL;")
+	db.query("ALTER TABLE player_taskhunt MODIFY COLUMN rarity TINYINT UNSIGNED NOT NULL;")
+	db.query("ALTER TABLE player_hirelings MODIFY COLUMN posz TINYINT UNSIGNED NOT NULL;")
+
+	db.query("ALTER TABLE towns MODIFY COLUMN posz TINYINT UNSIGNED NOT NULL DEFAULT 0;")
+	return true
 end

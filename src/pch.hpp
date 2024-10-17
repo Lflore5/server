@@ -96,6 +96,12 @@ struct fmt::formatter<E, std::enable_if_t<std::is_enum_v<E>, char>> : fmt::forma
 	}
 };
 
+template <typename E>
+std::enable_if_t<std::is_enum_v<E>, std::underlying_type_t<E>>
+format_as(E e) {
+	return static_cast<std::underlying_type_t<E>>(e);
+}
+
 // GMP
 #include <gmp.h>
 
@@ -125,15 +131,6 @@ struct fmt::formatter<E, std::enable_if_t<std::is_enum_v<E>, char>> : fmt::forma
 // Memory Mapped File
 #include <mio/mmap.hpp>
 
-// MySQL
-#if __has_include("<mysql.h>")
-	#include <mysql.h>
-#else
-	#include <mysql/mysql.h>
-#endif
-
-#include <mysql/errmsg.h>
-
 // Parallel Hash Map
 #include <parallel_hashmap/phmap.h>
 #include <parallel_hashmap/btree.h>
@@ -145,6 +142,8 @@ struct fmt::formatter<E, std::enable_if_t<std::is_enum_v<E>, char>> : fmt::forma
 #include <zlib.h>
 
 #include <boost/di.hpp>
+
+#include <boost/lexical_cast.hpp>
 
 // -------------------------
 // GIT Metadata Includes

@@ -9,9 +9,11 @@
 
 #pragma once
 
-#include "database/database.hpp"
 #include "declarations.hpp"
 #include "lib/di/container.hpp"
+
+class DBResult;
+using DBResult_ptr = std::shared_ptr<DBResult>;
 
 class IOMarket {
 public:
@@ -48,8 +50,6 @@ public:
 	const StatisticsMap &getSaleStatistics() const {
 		return saleStatistics;
 	}
-
-	static uint8_t getTierFromDatabaseTable(const std::string &string);
 
 private:
 	// [uint16_t = item id, [uint8_t = item tier, MarketStatistics = structure of the statistics]]

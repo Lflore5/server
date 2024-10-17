@@ -8,6 +8,8 @@
  */
 
 #include "io/iologindata.hpp"
+
+#include "database/database.hpp"
 #include "io/functions/iologindata_load_player.hpp"
 #include "io/functions/iologindata_save_player.hpp"
 #include "game/game.hpp"
@@ -70,7 +72,7 @@ uint8_t IOLoginData::getAccountType(uint32_t accountId) {
 		return ACCOUNT_TYPE_NORMAL;
 	}
 
-	return result->getNumber<uint8_t>("type");
+	return result->getU8("type");
 }
 
 void IOLoginData::updateOnlineStatus(uint32_t guid, bool login) {
@@ -92,22 +94,21 @@ void IOLoginData::updateOnlineStatus(uint32_t guid, bool login) {
 	Database::getInstance().executeQuery(query.str());
 }
 
-// The boolean "disableIrrelevantInfo" will deactivate the loading of information that is not relevant to the preload, for example, forge, bosstiary, etc. None of this we need to access if the player is offline
-bool IOLoginData::loadPlayerById(std::shared_ptr<Player> player, uint32_t id, bool disableIrrelevantInfo /* = true*/) {
+bool IOLoginData::loadPlayerById(std::shared_ptr<Player> player, uint32_t id) {
 	Database &db = Database::getInstance();
 	std::ostringstream query;
 	query << "SELECT * FROM `players` WHERE `id` = " << id;
-	return loadPlayer(player, db.storeQuery(query.str()), disableIrrelevantInfo);
+	return loadPlayer(player, db.storeQuery(query.str()));
 }
 
-bool IOLoginData::loadPlayerByName(std::shared_ptr<Player> player, const std::string &name, bool disableIrrelevantInfo /* = true*/) {
+bool IOLoginData::loadPlayerByName(std::shared_ptr<Player> player, const std::string &name) {
 	Database &db = Database::getInstance();
 	std::ostringstream query;
 	query << "SELECT * FROM `players` WHERE `name` = " << db.escapeString(name);
-	return loadPlayer(player, db.storeQuery(query.str()), disableIrrelevantInfo);
+	return loadPlayer(player, db.storeQuery(query.str()));
 }
 
-bool IOLoginData::loadPlayer(std::shared_ptr<Player> player, DBResult_ptr result, bool disableIrrelevantInfo /* = false*/) {
+bool IOLoginData::loadPlayer(std::shared_ptr<Player> player, DBResult_ptr result) {
 	if (!result || !player) {
 		std::string nullptrType = !result ? "Result" : "Player";
 		g_logger().warn("[{}] - {} is nullptr", __FUNCTION__, nullptrType);
@@ -177,10 +178,6 @@ bool IOLoginData::loadPlayer(std::shared_ptr<Player> player, DBResult_ptr result
 
 		// Load instant spells list
 		IOLoginDataLoad::loadPlayerInstantSpellList(player, result);
-
-		if (disableIrrelevantInfo) {
-			return true;
-		}
 
 		// load forge history
 		IOLoginDataLoad::loadPlayerForgeHistory(player, result);
@@ -300,7 +297,7 @@ uint32_t IOLoginData::getGuidByName(const std::string &name) {
 	if (!result) {
 		return 0;
 	}
-	return result->getNumber<uint32_t>("id");
+	return result->getU32("id");
 }
 
 bool IOLoginData::getGuidByNameEx(uint32_t &guid, bool &specialVip, std::string &name) {
@@ -314,8 +311,8 @@ bool IOLoginData::getGuidByNameEx(uint32_t &guid, bool &specialVip, std::string 
 	}
 
 	name = result->getString("name");
-	guid = result->getNumber<uint32_t>("id");
-	if (auto group = g_game().groups.getGroup(result->getNumber<uint16_t>("group_id"))) {
+	guid = result->getU32("id");
+	if (auto group = g_game().groups.getGroup(result->getU16("group_id"))) {
 		specialVip = group->flags[Groups::getFlagNumber(PlayerFlags_t::SpecialVIP)];
 	} else {
 		specialVip = false;
@@ -353,20 +350,44 @@ bool IOLoginData::hasBiddedOnHouse(uint32_t guid) {
 }
 
 std::vector<VIPEntry> IOLoginData::getVIPEntries(uint32_t accountId) {
-	std::string query = fmt::format("SELECT `player_id`, (SELECT `name` FROM `players` WHERE `id` = `player_id`) AS `name`, `description`, `icon`, `notify` FROM `account_viplist` WHERE `account_id` = {}", accountId);
 	std::vector<VIPEntry> entries;
 
-	if (const auto &result = Database::getInstance().storeQuery(query)) {
-		entries.reserve(result->countResults());
-		do {
-			entries.emplace_back(
-				result->getNumber<uint32_t>("player_id"),
-				result->getString("name"),
-				result->getString("description"),
-				result->getNumber<uint32_t>("icon"),
-				result->getNumber<uint16_t>("notify") != 0
-			);
-		} while (result->next());
+	try {
+		mysqlx::Session &session = g_database().getSession();
+		static mysqlx::SqlStatement stmt = session.sql(R"(
+			SELECT 
+				a.player_id, 
+				p.name, 
+				a.description, 
+				a.icon, 
+				a.notify
+			FROM 
+				account_viplist AS a
+			JOIN 
+				players AS p 
+			ON 
+				p.id = a.player_id
+			WHERE 
+				a.account_id = ?
+		)");
+
+		stmt.bind(accountId); // Correctly bind accountId with the placeholder '?'
+
+		mysqlx::SqlResult result = stmt.execute();
+		entries.reserve(result.count());
+		for (mysqlx::Row row : result) {
+			uint32_t playerId = row[0].get<uint32_t>();
+			std::string name = row[1].isNull() ? "" : row[1].get<std::string>();
+			std::string description = row[2].isNull() ? "" : row[2].get<std::string>();
+			uint32_t icon = row[3].get<uint32_t>();
+			bool notify = row[4].get<bool>();
+
+			entries.emplace_back(playerId, name, description, icon, notify);
+		}
+	} catch (const mysqlx::Error &err) {
+		g_logger().error("[{}] Error fetching VIP entries: {}", __FUNCTION__, err.what());
+	} catch (const std::exception &ex) {
+		g_logger().error("[{}] standard exception: {}", __FUNCTION__, ex.what());
 	}
 
 	return entries;
@@ -401,9 +422,9 @@ std::vector<VIPGroupEntry> IOLoginData::getVIPGroupEntries(uint32_t accountId, u
 
 		do {
 			entries.emplace_back(
-				result->getNumber<uint8_t>("id"),
+				result->getU8("id"),
 				result->getString("name"),
-				result->getNumber<uint8_t>("customizable") == 0 ? false : true
+				result->getU8("customizable") == 0 ? false : true
 			);
 		} while (result->next());
 	}

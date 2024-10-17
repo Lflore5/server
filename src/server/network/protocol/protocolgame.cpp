@@ -574,7 +574,7 @@ void ProtocolGame::login(const std::string &name, uint32_t accountId, OperatingS
 			return;
 		}
 
-		if (!IOLoginData::loadPlayerById(player, player->getGUID(), false)) {
+		if (!IOLoginData::loadPlayerById(player, player->getGUID())) {
 			g_game().removePlayerUniqueLogin(player);
 			disconnectClient("Your character could not be loaded.");
 			g_logger().warn("Player {} could not be loaded", player->getName());
@@ -4346,9 +4346,10 @@ void ProtocolGame::sendBlessStatus() {
 	uint8_t blessCount = 0;
 	uint16_t flag = 0;
 	uint16_t pow2 = 2;
-	for (int i = 1; i <= 8; i++) {
-		if (player->hasBlessing(i)) {
-			if (i > 1) {
+	for (const auto &bless : magic_enum::enum_values<Blessings>()) {
+		uint8_t blessId = static_cast<uint8_t>(bless);
+		if (player->hasBlessing(blessId)) {
+			if (blessId > 1) {
 				blessCount++;
 			}
 
