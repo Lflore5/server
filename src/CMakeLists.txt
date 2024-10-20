@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
 
 # Base configurations and settings for the project
 include(BaseConfig)
+include(CheckSIMDSupport)
 include(GNUInstallDirs)
 
 # Import configurations, source definitions, and linker settings
@@ -19,7 +20,9 @@ setup_target(${PROJECT_NAME})
 set_output_directory(${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_lib)
 
-# Configurar IPO e Linkagem Incremental para o executável
+configure_simd_flags(${PROJECT_NAME})
+configure_simd_flags(${PROJECT_NAME}_lib)
+
 configure_linking(${PROJECT_NAME})
 
 # Compiler warnings and options
