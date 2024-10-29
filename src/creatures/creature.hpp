@@ -780,6 +780,7 @@ protected:
 
 	Outfit_t currentOutfit;
 	Outfit_t defaultOutfit;
+	uint16_t currentMount;
 
 	Position lastPosition;
 	LightInfo internalLight;
