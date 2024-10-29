@@ -103,6 +103,12 @@ public:
 	bool isAttackable() const override {
 		return mType->info.isAttackable;
 	}
+	bool canWalk() const {
+		return mType->info.canWalk;
+	}
+	bool canTarget() const {
+		return mType->info.canTarget;
+	}
 	bool canPushItems() const {
 		return mType->info.canPushItems;
 	}
@@ -419,6 +425,7 @@ private:
 	Position masterPos;
 
 	bool isWalkingBack = false;
+	bool isWalkingTo = false;
 	bool isIdle = true;
 	bool extraMeleeAttack = false;
 	bool randomStepping = false;
@@ -498,7 +505,9 @@ private:
 
 	static std::vector<std::pair<int8_t, int8_t>> getPushItemLocationOptions(const Direction &direction);
 
+	void walkTo(const Position &walkToPosition);
 	void doWalkBack(uint32_t &flags, Direction &nextDirection, bool &result);
+	void doWalkTo(uint32_t &flags, Direction &nextDirection, bool &result);
 	void doFollowCreature(uint32_t &flags, Direction &nextDirection, bool &result);
 	void doRandomStep(Direction &nextDirection, bool &result);
 
