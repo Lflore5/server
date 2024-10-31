@@ -62,21 +62,22 @@ uint8_t Account::reload() {
 	return load();
 }
 
-uint8_t Account::save() {
+uint8_t Account::save() const {
+	using enum AccountErrors_t;
+
 	if (!m_accLoaded) {
-		return enumToValue(AccountErrors_t::NotInitialized);
+		return enumToValue(NotInitialized);
 	}
-
 	if (!g_accountRepository().save(m_account)) {
-		return enumToValue(AccountErrors_t::Storage);
+		return enumToValue(Storage);
 	}
-
-	return enumToValue(AccountErrors_t::Ok);
+	return enumToValue(Ok);
 }
 
-std::tuple<uint32_t, uint8_t> Account::getCoins(const uint8_t &type) const {
+std::tuple<uint32_t, AccountErrors_t> Account::getCoins(CoinType type) const {
+	using enum AccountErrors_t;
 	if (!m_accLoaded) {
-		return { 0, enumToValue(AccountErrors_t::NotInitialized) };
+		return { 0, NotInitialized };
 	}
 
 	uint32_t coins = 0;
@@ -84,21 +85,22 @@ std::tuple<uint32_t, uint8_t> Account::getCoins(const uint8_t &type) const {
 		return { 0, enumToValue(AccountErrors_t::Storage) };
 	}
 
-	return { coins, enumToValue(AccountErrors_t::Ok) };
+	return { coins, Ok };
 }
 
-uint8_t Account::addCoins(const uint8_t &type, const uint32_t &amount, const std::string &detail) {
+AccountErrors_t Account::addCoins(CoinType type, const uint32_t &amount, const std::string &detail) {
+	using enum AccountErrors_t;
 	if (!m_accLoaded) {
-		return enumToValue(AccountErrors_t::NotInitialized);
+		return NotInitialized;
 	}
 
 	if (amount == 0) {
-		return enumToValue(AccountErrors_t::Ok);
+		return Ok;
 	}
 
 	auto [coins, result] = getCoins(type);
 
-	if (AccountErrors_t::Ok != enumFromValue<AccountErrors_t>(result)) {
+	if (Ok != result) {
 		return result;
 	}
 
@@ -106,41 +108,42 @@ uint8_t Account::addCoins(const uint8_t &type, const uint32_t &amount, const std
 		return enumToValue(AccountErrors_t::Storage);
 	}
 
-	registerCoinTransaction(enumToValue(CoinTransactionType::Add), type, amount, detail);
+	registerCoinTransaction(CoinTransactionType::Add, type, amount, detail);
 
-	return enumToValue(AccountErrors_t::Ok);
+	return Ok;
 }
 
-uint8_t Account::removeCoins(const uint8_t &type, const uint32_t &amount, const std::string &detail) {
+AccountErrors_t Account::removeCoins(CoinType type, const uint32_t &amount, const std::string &detail) {
+	using enum AccountErrors_t;
 	if (!m_accLoaded) {
-		return enumToValue(AccountErrors_t::NotInitialized);
+		return NotInitialized;
 	}
 
 	if (amount == 0) {
-		return enumToValue(AccountErrors_t::Ok);
+		return AccountErrors_t::Ok;
 	}
 
 	auto [coins, result] = getCoins(type);
 
-	if (AccountErrors_t::Ok != enumFromValue<AccountErrors_t>(result)) {
+	if (Ok != result) {
 		return result;
 	}
 
 	if (coins < amount) {
 		g_logger().info("Account doesn't have enough coins! current[{}], remove:[{}]", coins, amount);
-		return enumToValue(AccountErrors_t::RemoveCoins);
+		return RemoveCoins;
 	}
 
 	if (!g_accountRepository().setCoins(m_account->id, type, coins - amount)) {
 		return enumToValue(AccountErrors_t::Storage);
 	}
 
-	registerCoinTransaction(enumToValue(CoinTransactionType::Remove), type, amount, detail);
+	registerCoinTransaction(CoinTransactionType::Remove, type, amount, detail);
 
-	return enumToValue(AccountErrors_t::Ok);
+	return Ok;
 }
 
-void Account::registerCoinTransaction(const uint8_t &transactionType, const uint8_t &type, const uint32_t &amount, const std::string &detail) {
+void Account::registerCoinTransaction(CoinTransactionType transactionType, CoinType type, const uint32_t &amount, const std::string &detail) {
 	if (!m_accLoaded) {
 		return;
 	}
@@ -221,10 +224,10 @@ void Account::updatePremiumTime() {
 	time_t lastDay = m_account->premiumLastDay;
 	uint32_t remainingDays = m_account->premiumRemainingDays;
 
-	time_t currentTime = getTimeNow();
+	const time_t currentTime = getTimeNow();
 
-	auto daysLeft = static_cast<int32_t>((lastDay - currentTime) / 86400);
-	auto timeLeft = static_cast<int32_t>((lastDay - currentTime) % 86400);
+	const auto daysLeft = static_cast<int32_t>((lastDay - currentTime) / 86400);
+	const auto timeLeft = static_cast<int32_t>((lastDay - currentTime) % 86400);
 
 	m_account->premiumRemainingDays = daysLeft > 0 ? daysLeft : 0;
 
@@ -276,7 +279,7 @@ bool Account::authenticateSession() {
 }
 
 bool Account::authenticatePassword(const std::string &password) {
-	if (Argon2 {}.argon(password.c_str(), getPassword())) {
+	if (Argon2().argon(password, getPassword())) {
 		return true;
 	}
 
