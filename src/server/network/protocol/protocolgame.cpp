@@ -30,6 +30,9 @@
 #include "creatures/players/management/waitlist.hpp"
 #include "creatures/players/player.hpp"
 #include "creatures/players/vip/player_vip.hpp"
+#include "creatures/players/components/player_forge_history.hpp"
+#include "creatures/players/components/player_stash.hpp"
+#include "creatures/players/components/player_storage.hpp"
 #include "creatures/players/wheel/player_wheel.hpp"
 #include "enums/player_icons.hpp"
 #include "game/game.hpp"
@@ -5676,7 +5679,7 @@ void ProtocolGame::sendForgeResult(ForgeAction_t actionType, uint16_t leftItemId
 
 void ProtocolGame::sendForgeHistory(uint8_t page) {
 	page = page + 1;
-	auto historyVector = player->getForgeHistory();
+	auto historyVector = player->forgeHistory()->get();
 	auto historyVectorLen = getVectorIterationIncreaseCount(historyVector);
 
 	uint16_t lastPage = (1 < std::floor((historyVectorLen - 1) / 9) + 1) ? static_cast<uint16_t>(std::floor((historyVectorLen - 1) / 9) + 1) : 1;
@@ -5700,7 +5703,7 @@ void ProtocolGame::sendForgeHistory(uint8_t page) {
 	if (historyPageToSend > 0) {
 		for (const auto &history : historyPerPage) {
 			auto action = magic_enum::enum_integer(history.actionType);
-			msg.add<uint32_t>(static_cast<uint32_t>(history.createdAt));
+			msg.add<uint32_t>(history.createdAt / 1000);
 			msg.addByte(action);
 			msg.addString(history.description);
 			msg.addByte((history.bonus >= 1 && history.bonus < 8) ? 0x01 : 0x00);
@@ -7944,7 +7947,7 @@ void ProtocolGame::openImbuementWindow(const std::shared_ptr<Item> &item) {
 		for (const auto &itm : items) {
 			if (!needItems.count(itm.first)) {
 				needItems[itm.first] = player->getItemTypeCount(itm.first);
-				uint32_t stashCount = player->getStashItemCount(Item::items[itm.first].id);
+				uint32_t stashCount = player->stash()->getCount(Item::items[itm.first].id);
 				if (stashCount > 0) {
 					needItems[itm.first] += stashCount;
 				}
@@ -8312,7 +8315,7 @@ void ProtocolGame::AddHiddenShopItem(NetworkMessage &msg) {
 
 void ProtocolGame::AddShopItem(NetworkMessage &msg, const ShopBlock &shopBlock) {
 	// Sends the item information empty if the player doesn't have the storage to buy/sell a certain item
-	if (shopBlock.itemStorageKey != 0 && player->getStorageValue(shopBlock.itemStorageKey) < shopBlock.itemStorageValue) {
+	if (shopBlock.itemStorageKey != 0 && player->storage()->get(shopBlock.itemStorageKey) < shopBlock.itemStorageValue) {
 		AddHiddenShopItem(msg);
 		return;
 	}
@@ -8506,13 +8509,14 @@ void ProtocolGame::sendOpenStash() {
 
 	NetworkMessage msg;
 	msg.addByte(0x29);
-	StashItemList list = player->getStashItems();
-	msg.add<uint16_t>(list.size());
-	for (auto item : list) {
+	const auto &stashItems = player->stash()->getItems();
+	msg.add<uint16_t>(stashItems.size());
+	for (auto item : stashItems) {
 		msg.add<uint16_t>(item.first);
 		msg.add<uint32_t>(item.second);
 	}
-	msg.add<uint16_t>(static_cast<uint16_t>(g_configManager().getNumber(STASH_ITEMS) - getStashSize(list)));
+	const auto stashSize = player->stash()->getSize();
+	msg.add<uint16_t>(static_cast<uint16_t>(g_configManager().getNumber(STASH_ITEMS) - stashSize));
 	writeToOutputBuffer(msg);
 }
 

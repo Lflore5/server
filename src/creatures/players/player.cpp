@@ -18,6 +18,9 @@
 #include "creatures/monsters/monster.hpp"
 #include "creatures/monsters/monsters.hpp"
 #include "creatures/npcs/npc.hpp"
+#include "creatures/players/components/player_forge_history.hpp"
+#include "creatures/players/components/player_stash.hpp"
+#include "creatures/players/components/player_storage.hpp"
 #include "creatures/players/wheel/player_wheel.hpp"
 #include "creatures/players/wheel/wheel_gems.hpp"
 #include "creatures/players/achievement/player_achievement.hpp"
@@ -75,6 +78,9 @@ Player::Player(std::shared_ptr<ProtocolGame> p) :
 	m_playerBadge = std::make_unique<PlayerBadge>(*this);
 	m_playerCyclopedia = std::make_unique<PlayerCyclopedia>(*this);
 	m_playerTitle = std::make_unique<PlayerTitle>(*this);
+	m_stashPlayer = std::make_unique<PlayerStash>(*this);
+	m_forgeHistoryPlayer = std::make_unique<PlayerForgeHistory>(*this);
+	m_storagePlayer = std::make_unique<PlayerStorage>(*this);
 }
 
 Player::~Player() {
@@ -975,9 +981,9 @@ void Player::closeContainer(uint8_t cid) {
 	if (container && container->isAnyKindOfRewardChest() && !hasOtherRewardContainerOpen(container)) {
 		removeEmptyRewards();
 	}
+
+	// Be careful when using the "container" after this, it may crash since the iterator has been invalidated
 	openContainers.erase(it);
-	if (container && container->getID() == ITEM_BROWSEFIELD) {
-	}
 }
 
 void Player::removeEmptyRewards() {
@@ -1039,73 +1045,6 @@ uint16_t Player::getLookCorpse() const {
 		return ITEM_FEMALE_CORPSE;
 	}
 	return ITEM_MALE_CORPSE;
-}
-
-void Player::addStorageValue(const uint32_t key, const int32_t value, const bool isLogin /* = false*/) {
-	if (IS_IN_KEYRANGE(key, RESERVED_RANGE)) {
-		if (IS_IN_KEYRANGE(key, OUTFITS_RANGE)) {
-			outfits.emplace_back(
-				value >> 16,
-				value & 0xFF
-			);
-			return;
-		}
-		if (IS_IN_KEYRANGE(key, MOUNTS_RANGE)) {
-			// do nothing
-		} else if (IS_IN_KEYRANGE(key, FAMILIARS_RANGE)) {
-			familiars.emplace_back(
-				value >> 16
-			);
-			return;
-		} else {
-			g_logger().warn("Unknown reserved key: {} for player: {}", key, getName());
-			return;
-		}
-	}
-
-	if (value != -1) {
-		int32_t oldValue = getStorageValue(key);
-		storageMap[key] = value;
-
-		if (!isLogin) {
-			auto currentFrameTime = g_dispatcher().getDispatcherCycle();
-			g_events().eventOnStorageUpdate(static_self_cast<Player>(), key, value, oldValue, currentFrameTime);
-			g_callbacks().executeCallback(EventCallback_t::playerOnStorageUpdate, &EventCallback::playerOnStorageUpdate, getPlayer(), key, value, oldValue, currentFrameTime);
-		}
-	} else {
-		storageMap.erase(key);
-	}
-}
-
-int32_t Player::getStorageValue(const uint32_t key) const {
-	int32_t value = -1;
-	const auto it = storageMap.find(key);
-	if (it == storageMap.end()) {
-		return value;
-	}
-
-	value = it->second;
-	return value;
-}
-
-int32_t Player::getStorageValueByName(const std::string &storageName) const {
-	const auto it = g_storages().getStorageMap().find(storageName);
-	if (it == g_storages().getStorageMap().end()) {
-		return -1;
-	}
-	const uint32_t key = it->second;
-
-	return getStorageValue(key);
-}
-
-void Player::addStorageValueByName(const std::string &storageName, const int32_t value, const bool isLogin /* = false*/) {
-	auto it = g_storages().getStorageMap().find(storageName);
-	if (it == g_storages().getStorageMap().end()) {
-		g_logger().error("[{}] Storage name '{}' not found in storage map, register your storage in 'storages.xml' first for use", __func__, storageName);
-		return;
-	}
-	const uint32_t key = it->second;
-	addStorageValue(key, value, isLogin);
 }
 
 std::shared_ptr<KV> Player::kv() const {
@@ -1257,7 +1196,7 @@ std::pair<uint64_t, uint64_t> Player::getForgeSliversAndCores() const {
 	}
 
 	// Check items from stash
-	for (const auto &stashToSend = getStashItems();
+	for (const auto &stashToSend = stash()->getItems();
 	     const auto &[itemId, itemCount] : stashToSend) {
 		if (itemId == ITEM_FORGE_SLIVER) {
 			sliverCount += itemCount;
@@ -2281,7 +2220,7 @@ void Player::onApplyImbuement(const Imbuement* imbuement, const std::shared_ptr<
 	const auto &items = imbuement->getItems();
 	for (auto &[key, value] : items) {
 		const ItemType &itemType = Item::items[key];
-		if (static_self_cast<Player>()->getItemTypeCount(key) + this->getStashItemCount(itemType.id) < value) {
+		if (static_self_cast<Player>()->getItemTypeCount(key) + stash()->getCount(itemType.id) < value) {
 			this->sendImbuementResult("You don't have all necessary items.");
 			return;
 		}
@@ -2322,7 +2261,7 @@ void Player::onApplyImbuement(const Imbuement* imbuement, const std::shared_ptr<
 		const ItemType &itemType = Item::items[key];
 
 		withdrawItemMessage << "Using " << mathItemCount << "x " << itemType.name << " from your supply stash. ";
-		withdrawItem(itemType.id, mathItemCount);
+		stash()->remove(itemType.id, mathItemCount);
 		sendTextMessage(MESSAGE_STATUS, withdrawItemMessage.str());
 	}
 
@@ -4458,7 +4397,7 @@ void Player::stashContainer(const StashContainerList &itemDict) {
 		stashItemDict[item->getID()] = itemCount;
 	}
 
-	for (const auto &[itemId, itemCount] : stashItems) {
+	for (const auto &[itemId, itemCount] : stash()->getItems()) {
 		if (!stashItemDict[itemId]) {
 			stashItemDict[itemId] = itemCount;
 		} else {
@@ -4480,7 +4419,7 @@ void Player::stashContainer(const StashContainerList &itemDict) {
 		}
 		const uint16_t iteratorCID = item->getID();
 		if (g_game().internalRemoveItem(item, itemCount) == RETURNVALUE_NOERROR) {
-			addItemOnStash(iteratorCID, itemCount);
+			stash()->add(iteratorCID, itemCount);
 			totalStowed += itemCount;
 			if (isDepotSearchOpenOnItem(iteratorCID)) {
 				refreshDepotSearchOnItem = iteratorCID;
@@ -4572,7 +4511,7 @@ bool Player::hasItemCountById(uint16_t itemId, uint32_t itemAmount, bool checkSt
 	}
 
 	// Check items from stash
-	for (StashItemList stashToSend = getStashItems();
+	for (const auto &stashToSend = stash()->getItems();
 	     const auto &[stashItemId, itemCount] : stashToSend) {
 		if (!checkStash) {
 			break;
@@ -4611,48 +4550,11 @@ bool Player::removeItemCountById(uint16_t itemId, uint32_t itemAmount, bool remo
 	}
 
 	// If there are not enough items in the inventory, we will remove the remaining from stash
-	if (removeFromStash && amountToRemove > 0 && withdrawItem(itemId, amountToRemove)) {
+	if (removeFromStash && amountToRemove > 0 && stash()->remove(itemId, amountToRemove)) {
 		return true;
 	}
 
 	return false;
-}
-
-void Player::addItemOnStash(uint16_t itemId, uint32_t amount) {
-	const auto it = stashItems.find(itemId);
-	if (it != stashItems.end()) {
-		stashItems[itemId] += amount;
-		return;
-	}
-
-	stashItems[itemId] = amount;
-}
-
-uint32_t Player::getStashItemCount(uint16_t itemId) const {
-	const auto it = stashItems.find(itemId);
-	if (it != stashItems.end()) {
-		return it->second;
-	}
-	return 0;
-}
-
-bool Player::withdrawItem(uint16_t itemId, uint32_t amount) {
-	const auto it = stashItems.find(itemId);
-	if (it != stashItems.end()) {
-		if (it->second > amount) {
-			stashItems[itemId] -= amount;
-		} else if (it->second == amount) {
-			stashItems.erase(itemId);
-		} else {
-			return false;
-		}
-		return true;
-	}
-	return false;
-}
-
-StashItemList Player::getStashItems() const {
-	return stashItems;
 }
 
 uint32_t Player::getBaseCapacity() const {
@@ -4840,7 +4742,7 @@ void Player::setHazardSystemPoints(int32_t count) {
 	if (!g_configManager().getBoolean(TOGGLE_HAZARDSYSTEM)) {
 		return;
 	}
-	addStorageValue(STORAGEVALUE_HAZARDCOUNT, std::max<int32_t>(0, std::min<int32_t>(0xFFFF, count)), true);
+	storage()->add(STORAGEVALUE_HAZARDCOUNT, std::max<int32_t>(0, std::min<int32_t>(0xFFFF, count)), true);
 	reloadHazardSystemPointsCounter = true;
 	if (count > 0) {
 		setIcon("hazard", CreatureIcon(CreatureIconQuests_t::Hazard, count));
@@ -4850,7 +4752,7 @@ void Player::setHazardSystemPoints(int32_t count) {
 }
 
 uint16_t Player::getHazardSystemPoints() const {
-	const int32_t points = getStorageValue(STORAGEVALUE_HAZARDCOUNT);
+	const int32_t points = storage()->get(STORAGEVALUE_HAZARDCOUNT);
 	if (points <= 0) {
 		return 0;
 	}
@@ -5842,19 +5744,6 @@ bool Player::canWear(uint16_t lookType, uint8_t addons) const {
 	return false;
 }
 
-void Player::genReservedStorageRange() {
-	// generate outfits range
-	uint32_t outfits_key = PSTRG_OUTFITS_RANGE_START;
-	for (const auto &entry : outfits) {
-		storageMap[++outfits_key] = (entry.lookType << 16) | entry.addons;
-	}
-	// generate familiars range
-	uint32_t familiar_key = PSTRG_FAMILIARS_RANGE_START;
-	for (const auto &entry : familiars) {
-		storageMap[++familiar_key] = (entry.lookType << 16);
-	}
-}
-
 void Player::setSpecialMenuAvailable(bool supplyStashBool, bool marketMenuBool, bool depotSearchBool) {
 	// Closing depot search when player have special container disabled and it's still open.
 	if (isDepotSearchOpen() && !depotSearchBool && depotSearch) {
@@ -6805,7 +6694,7 @@ void Player::sendUnjustifiedPoints() const {
 }
 
 uint8_t Player::getLastMount() const {
-	const int32_t value = getStorageValue(PSTRG_MOUNTS_CURRENTMOUNT);
+	const int32_t value = storage()->get(PSTRG_MOUNTS_CURRENTMOUNT);
 	if (value > 0) {
 		return value;
 	}
@@ -6813,7 +6702,7 @@ uint8_t Player::getLastMount() const {
 }
 
 uint8_t Player::getCurrentMount() const {
-	const int32_t value = getStorageValue(PSTRG_MOUNTS_CURRENTMOUNT);
+	const int32_t value = storage()->get(PSTRG_MOUNTS_CURRENTMOUNT);
 	if (value > 0) {
 		return value;
 	}
@@ -6821,7 +6710,7 @@ uint8_t Player::getCurrentMount() const {
 }
 
 void Player::setCurrentMount(uint8_t mount) {
-	addStorageValue(PSTRG_MOUNTS_CURRENTMOUNT, mount);
+	storage()->add(PSTRG_MOUNTS_CURRENTMOUNT, mount);
 }
 
 bool Player::hasAnyMount() const {
@@ -6931,14 +6820,14 @@ bool Player::tameMount(uint8_t mountId) {
 	const uint8_t tmpMountId = mountId - 1;
 	const uint32_t key = PSTRG_MOUNTS_RANGE_START + (tmpMountId / 31);
 
-	int32_t value = getStorageValue(key);
+	int32_t value = storage()->get(key);
 	if (value != -1) {
 		value |= (1 << (tmpMountId % 31));
 	} else {
 		value = (1 << (tmpMountId % 31));
 	}
 
-	addStorageValue(key, value);
+	storage()->add(key, value);
 	return true;
 }
 
@@ -6950,13 +6839,13 @@ bool Player::untameMount(uint8_t mountId) {
 	const uint8_t tmpMountId = mountId - 1;
 	const uint32_t key = PSTRG_MOUNTS_RANGE_START + (tmpMountId / 31);
 
-	int32_t value = getStorageValue(key);
+	int32_t value = storage()->get(key);
 	if (value == -1) {
 		return true;
 	}
 
 	value &= ~(1 << (tmpMountId % 31));
-	addStorageValue(key, value);
+	storage()->add(key, value);
 
 	if (getCurrentMount() == mountId) {
 		if (isMounted()) {
@@ -6982,7 +6871,7 @@ bool Player::hasMount(const std::shared_ptr<Mount> &mount) const {
 
 	const uint8_t tmpMountId = mount->id - 1;
 
-	const int32_t value = getStorageValue(PSTRG_MOUNTS_RANGE_START + (tmpMountId / 31));
+	const int32_t value = storage()->get(PSTRG_MOUNTS_RANGE_START + (tmpMountId / 31));
 	if (value == -1) {
 		return false;
 	}
@@ -8410,7 +8299,7 @@ void Player::requestDepotItems() {
 		}
 	}
 
-	for (const auto &[itemId, itemCount] : getStashItems()) {
+	for (const auto &[itemId, itemCount] : stash()->getItems()) {
 		auto itemMap_it = itemMap.find(itemId);
 		// Stackable items not have upgrade classification
 		if (Item::items[itemId].upgradeClassification > 0) {
@@ -8444,7 +8333,7 @@ void Player::requestDepotSearchItem(uint16_t itemId, uint8_t tier) {
 
 	if (const ItemType &iType = Item::items[itemId];
 	    iType.stackable && iType.wareId > 0) {
-		stashCount = getStashItemCount(itemId);
+		stashCount = stash()->getCount(itemId);
 	}
 
 	const auto &depotLocker = getDepotLocker(getLastDepotId());
@@ -8626,7 +8515,7 @@ std::pair<std::vector<std::shared_ptr<Item>>, std::map<uint16_t, std::map<uint8_
 		}
 	}
 
-	StashItemList stashToSend = getStashItems();
+	const auto &stashToSend = stash()->getItems();
 	for (const auto &[itemId, itemCount] : stashToSend) {
 		const ItemType &itemType = Item::items[itemId];
 		if (itemType.wareId != 0) {
@@ -8693,7 +8582,7 @@ bool Player::saySpell(SpeakClasses type, const std::string &text, bool isGhostMo
 	for (const auto &spectator : spectators) {
 		if (const auto &tmpPlayer = spectator->getPlayer()) {
 			if (g_configManager().getBoolean(EMOTE_SPELLS)) {
-				valueEmote = tmpPlayer->getStorageValue(STORAGEVALUE_EMOTE);
+				valueEmote = tmpPlayer->storage()->get(STORAGEVALUE_EMOTE);
 			}
 			if (!isGhostMode || tmpPlayer->canSeeCreature(static_self_cast<Player>())) {
 				if (valueEmote == 1) {
@@ -9058,7 +8947,7 @@ void Player::forgeFuseItems(ForgeAction_t actionType, uint16_t firstItemId, uint
 	history.firstItemName = firstForgingItem->getName();
 	history.secondItemName = secondForgingItem->getName();
 	history.bonus = bonus;
-	history.createdAt = getTimeNow();
+	history.createdAt = getTimeMsNow();
 	history.convergence = convergence;
 	registerForgeHistoryDescription(history);
 
@@ -9189,7 +9078,7 @@ void Player::forgeTransferItemTier(ForgeAction_t actionType, uint16_t donorItemI
 
 	history.firstItemName = Item::items[donorItemId].name;
 	history.secondItemName = newReceiveItem->getName();
-	history.createdAt = getTimeNow();
+	history.createdAt = getTimeMsNow();
 	history.convergence = convergence;
 	registerForgeHistoryDescription(history);
 
@@ -9273,7 +9162,7 @@ void Player::forgeResourceConversion(ForgeAction_t actionType) {
 		addForgeDustLevel(1);
 	}
 
-	history.createdAt = getTimeNow();
+	history.createdAt = getTimeMsNow();
 	registerForgeHistoryDescription(history);
 	sendForgingData();
 }
@@ -9353,14 +9242,6 @@ void Player::removeForgeDustLevel(uint64_t amount) {
 
 uint64_t Player::getForgeDustLevel() const {
 	return forgeDustLevel;
-}
-
-std::vector<ForgeHistory> &Player::getForgeHistory() {
-	return forgeHistoryVector;
-}
-
-void Player::setForgeHistory(const ForgeHistory &history) {
-	forgeHistoryVector.emplace_back(history);
 }
 
 void Player::registerForgeHistoryDescription(ForgeHistory history) {
@@ -9513,7 +9394,7 @@ void Player::registerForgeHistoryDescription(ForgeHistory history) {
 
 	history.description = detailsResponse.str();
 
-	setForgeHistory(history);
+	forgeHistory()->add(history);
 }
 
 // Quickloot
@@ -10236,6 +10117,33 @@ const std::unique_ptr<PlayerCyclopedia> &Player::cyclopedia() const {
 	return m_playerCyclopedia;
 }
 
+// Stash interface
+std::unique_ptr<PlayerStash> &Player::stash() {
+	return m_stashPlayer;
+}
+
+const std::unique_ptr<PlayerStash> &Player::stash() const {
+	return m_stashPlayer;
+}
+
+// Forge history interface
+std::unique_ptr<PlayerForgeHistory> &Player::forgeHistory() {
+	return m_forgeHistoryPlayer;
+}
+
+const std::unique_ptr<PlayerForgeHistory> &Player::forgeHistory() const {
+	return m_forgeHistoryPlayer;
+}
+
+// Storage interface
+std::unique_ptr<PlayerStorage> &Player::storage() {
+	return m_storagePlayer;
+}
+
+const std::unique_ptr<PlayerStorage> &Player::storage() const {
+	return m_storagePlayer;
+}
+
 void Player::sendLootMessage(const std::string &message) const {
 	const auto &party = getParty();
 	if (!party) {
@@ -10346,12 +10254,12 @@ void Player::BestiarysendCharms() const {
 void Player::addBestiaryKillCount(uint16_t raceid, uint32_t amount) {
 	const uint32_t oldCount = getBestiaryKillCount(raceid);
 	const uint32_t key = STORAGEVALUE_BESTIARYKILLCOUNT + raceid;
-	addStorageValue(key, static_cast<int32_t>(oldCount + amount), true);
+	storage()->add(key, static_cast<int32_t>(oldCount + amount), true);
 }
 
 uint32_t Player::getBestiaryKillCount(uint16_t raceid) const {
 	const uint32_t key = STORAGEVALUE_BESTIARYKILLCOUNT + raceid;
-	const auto value = getStorageValue(key);
+	const auto value = storage()->get(key);
 	return value > 0 ? static_cast<uint32_t>(value) : 0;
 }
 
