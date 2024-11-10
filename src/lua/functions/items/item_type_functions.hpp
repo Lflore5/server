@@ -41,6 +41,7 @@ public:
 		registerMethod(L, "ItemType", "isPickupable", ItemTypeFunctions::luaItemTypeIsPickupable);
 		registerMethod(L, "ItemType", "isKey", ItemTypeFunctions::luaItemTypeIsKey);
 		registerMethod(L, "ItemType", "isQuiver", ItemTypeFunctions::luaItemTypeIsQuiver);
+		registerMethod(L, "ItemType", "isPodium", ItemTypeFunctions::luaItemTypeIsPodium);
 
 		registerMethod(L, "ItemType", "getType", ItemTypeFunctions::luaItemTypeGetType);
 		registerMethod(L, "ItemType", "getId", ItemTypeFunctions::luaItemTypeGetId);
@@ -108,6 +109,7 @@ private:
 	static int luaItemTypeIsPickupable(lua_State* L);
 	static int luaItemTypeIsKey(lua_State* L);
 	static int luaItemTypeIsQuiver(lua_State* L);
+	static int luaItemTypeIsPodium(lua_State* L);
 
 	static int luaItemTypeGetType(lua_State* L);
 	static int luaItemTypeGetId(lua_State* L);
