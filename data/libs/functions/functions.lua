@@ -1077,3 +1077,10 @@ function onDeathForDamagingPlayers(creature, func)
 		end
 	end
 end
+
+function setLootHighlight(position)
+	position:sendMagicEffect(CONST_ME_LOOT_HIGHLIGHT)
+	addEvent(function()
+		position:removeMagicEffect(CONST_ME_LOOT_HIGHLIGHT)
+	end, 60000)
+end
