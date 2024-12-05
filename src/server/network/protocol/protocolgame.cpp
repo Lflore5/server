@@ -873,15 +873,15 @@ void ProtocolGame::onConnect() {
 	output->skipBytes(sizeof(uint32_t));
 
 	// Packet length & type
-	output->add<uint16_t>(0x0006);
+	output->addByte(0x01);
 	output->addByte(0x1F);
-
 	// Add timestamp & random number
 	challengeTimestamp = static_cast<uint32_t>(time(nullptr));
 	output->add<uint32_t>(challengeTimestamp);
 
 	challengeRandom = randNumber(generator);
 	output->addByte(challengeRandom);
+	output->addByte(0x71);
 
 	// Go back and write checksum
 	output->skipBytes(-12);
@@ -4653,7 +4653,7 @@ void ProtocolGame::sendIcons(const std::unordered_set<PlayerIcon> &iconSet, cons
 		msg.add<uint16_t>(static_cast<uint16_t>(icons));
 	} else {
 		// Send as uint32_t in new protocol
-		msg.add<uint32_t>(icons);
+		msg.add<uint64_t>(icons);
 		msg.addByte(enumToValue(iconBakragore)); // Icons Bakragore
 	}
 
