@@ -175,6 +175,10 @@ public:
 	void setHazardSystemDefenseBoost(bool value);
 	// Hazard end
 
+	bool getSoulPit() const;
+	void setSoulPit(bool value);
+	void setSoulPitStack(uint8_t stack, bool isSummon = false);
+
 	void updateTargetList();
 	void clearTargetList();
 	void clearFriendList();
@@ -182,6 +186,8 @@ public:
 	BlockType_t blockHit(const std::shared_ptr<Creature> &attacker, const CombatType_t &combatType, int32_t &damage, bool checkDefense = false, bool checkArmor = false, bool field = false) override;
 
 	static uint32_t monsterAutoID;
+
+	void applyStacks();
 
 	void configureForgeSystem();
 
@@ -282,6 +288,8 @@ private:
 	bool hazardDodge = false;
 	bool hazardDamageBoost = false;
 	bool hazardDefenseBoost = false;
+
+	bool soulPit = false;
 
 	bool m_isDead = false;
 	bool m_isImmune = false;

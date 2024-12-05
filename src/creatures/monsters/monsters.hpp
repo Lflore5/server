@@ -94,6 +94,8 @@ class MonsterType {
 		uint32_t maxSummons = 0;
 		uint32_t changeTargetSpeed = 0;
 
+		uint32_t soulCore = 0;
+
 		std::bitset<ConditionType_t::CONDITION_COUNT> m_conditionImmunities;
 		std::bitset<CombatType_t::COMBAT_COUNT> m_damageImmunities;
 
@@ -265,6 +267,8 @@ public:
 	std::shared_ptr<MonsterType> getMonsterTypeByRaceId(uint16_t raceId, bool isBoss = false) const;
 	bool tryAddMonsterType(const std::string &name, const std::shared_ptr<MonsterType> &mType);
 	bool deserializeSpell(const std::shared_ptr<MonsterSpell> &spell, spellBlock_t &sb, const std::string &description = "") const;
+	std::vector<std::shared_ptr<MonsterType>> getMonstersByRace(BestiaryType_t race) const;
+	std::vector<std::shared_ptr<MonsterType>> getMonstersByBestiaryStars(uint8_t stars) const;
 
 	std::unique_ptr<LuaScriptInterface> scriptInterface;
 	std::map<std::string, std::shared_ptr<MonsterType>> monsters;

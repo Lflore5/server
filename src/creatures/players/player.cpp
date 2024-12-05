@@ -5743,9 +5743,11 @@ bool Player::onKilledMonster(const std::shared_ptr<Monster> &monster) {
 		g_logger().error("[{}] Monster type is null.", __FUNCTION__);
 		return false;
 	}
-	addHuntingTaskKill(mType);
-	addBestiaryKill(mType);
-	addBosstiaryKill(mType);
+	if (!monster->getSoulPit()) {
+		addHuntingTaskKill(mType);
+		addBestiaryKill(mType);
+		addBosstiaryKill(mType);
+	}
 	return false;
 }
 

@@ -206,6 +206,8 @@ bool Condition::executeCondition(const std::shared_ptr<Creature> &creature, int3
 }
 
 std::shared_ptr<Condition> Condition::createCondition(ConditionId_t id, ConditionType_t type, int32_t ticks, int32_t param /* = 0*/, bool buff /* = false*/, uint32_t subId /* = 0*/, bool isPersistent /* = false*/) {
+
+	std::shared_ptr<ConditionAttributes> conditionAttributes = nullptr;
 	switch (type) {
 		case CONDITION_POISON:
 		case CONDITION_FIRE:
@@ -251,6 +253,24 @@ std::shared_ptr<Condition> Condition::createCondition(ConditionId_t id, Conditio
 		case CONDITION_FEARED:
 			return std::make_shared<ConditionFeared>(id, type, ticks, buff, subId);
 
+		case CONDITION_LESSERHEX:
+			conditionAttributes = std::make_shared<ConditionAttributes>(id, type, ticks, buff, subId);
+			conditionAttributes->setParam(CONDITION_PARAM_BUFF_HEALINGRECEIVED, 50);
+			return conditionAttributes;
+
+		case CONDITION_INTENSEHEX:
+			conditionAttributes = std::make_shared<ConditionAttributes>(id, type, ticks, buff, subId);
+			conditionAttributes->setParam(CONDITION_PARAM_BUFF_HEALINGRECEIVED, 50);
+			conditionAttributes->setParam(CONDITION_PARAM_BUFF_DAMAGEDEALT, 50);
+			return conditionAttributes;
+
+		case CONDITION_GREATERHEX:
+			conditionAttributes = std::make_shared<ConditionAttributes>(id, type, ticks, buff, subId);
+			conditionAttributes->setParam(CONDITION_PARAM_BUFF_HEALINGRECEIVED, 50);
+			conditionAttributes->setParam(CONDITION_PARAM_BUFF_DAMAGEDEALT, 50);
+			conditionAttributes->setParam(CONDITION_PARAM_STAT_MAXHITPOINTSPERCENT, 60);
+			return conditionAttributes;
+
 		case CONDITION_ROOTED:
 		case CONDITION_INFIGHT:
 		case CONDITION_DRUNK:
@@ -260,6 +280,7 @@ std::shared_ptr<Condition> Condition::createCondition(ConditionId_t id, Conditio
 		case CONDITION_MUTED:
 		case CONDITION_CHANNELMUTEDTICKS:
 		case CONDITION_YELLTICKS:
+		case CONDITION_POWERLESS:
 		case CONDITION_PACIFIED:
 			return std::make_shared<ConditionGeneric>(id, type, ticks, buff, subId);
 		case CONDITION_BAKRAGORE:
@@ -461,6 +482,23 @@ std::unordered_set<PlayerIcon> ConditionGeneric::getIcons() const {
 		case CONDITION_ROOTED:
 			icons.insert(PlayerIcon::Rooted);
 			break;
+
+		case CONDITION_LESSERHEX:
+			icons.insert(PlayerIcon::LesserHex);
+			break;
+
+		case CONDITION_INTENSEHEX:
+			icons.insert(PlayerIcon::IntenseHex);
+			break;
+
+		case CONDITION_GREATERHEX:
+			icons.insert(PlayerIcon::GreaterHex);
+			break;
+
+		case CONDITION_POWERLESS:
+			icons.insert(PlayerIcon::Powerless);
+			break;
+
 		case CONDITION_GOSHNARTAINT:
 			switch (subId) {
 				case 1:
@@ -998,6 +1036,11 @@ bool ConditionAttributes::setParam(ConditionParam_t param, int32_t value) {
 
 		case CONDITION_PARAM_STAT_CAPACITYPERCENT: {
 			statsPercent[STAT_CAPACITY] = std::max<int32_t>(0, value);
+			return true;
+		}
+
+		case CONDITION_PARAM_BUFF_HEALINGRECEIVED: {
+			buffsPercent[BUFF_HEALINGRECEIVED] = std::max<int32_t>(0, value);
 			return true;
 		}
 

@@ -66,6 +66,7 @@ void GameFunctions::init(lua_State* L) {
 	Lua::registerMethod(L, "Game", "createItem", GameFunctions::luaGameCreateItem);
 	Lua::registerMethod(L, "Game", "createContainer", GameFunctions::luaGameCreateContainer);
 	Lua::registerMethod(L, "Game", "createMonster", GameFunctions::luaGameCreateMonster);
+	Lua::registerMethod(L, "Game", "createSoulPitMonster", GameFunctions::luaGameCreateSoulPitMonster);
 	Lua::registerMethod(L, "Game", "createNpc", GameFunctions::luaGameCreateNpc);
 	Lua::registerMethod(L, "Game", "generateNpc", GameFunctions::luaGameGenerateNpc);
 	Lua::registerMethod(L, "Game", "createTile", GameFunctions::luaGameCreateTile);
@@ -107,6 +108,8 @@ void GameFunctions::init(lua_State* L) {
 	Lua::registerMethod(L, "Game", "getSecretAchievements", GameFunctions::luaGameGetSecretAchievements);
 	Lua::registerMethod(L, "Game", "getPublicAchievements", GameFunctions::luaGameGetPublicAchievements);
 	Lua::registerMethod(L, "Game", "getAchievements", GameFunctions::luaGameGetAchievements);
+
+	Lua::registerMethod(L, "Game", "getSoulCoreItems", GameFunctions::luaGameGetSoulCoreItems);
 }
 
 // Game
@@ -524,6 +527,50 @@ int GameFunctions::luaGameCreateMonster(lua_State* L) {
 	const bool extended = Lua::getBoolean(L, 3, false);
 	const bool force = Lua::getBoolean(L, 4, false);
 	if (g_game().placeCreature(monster, position, extended, force)) {
+		monster->onSpawn();
+		const auto &mtype = monster->getMonsterType();
+		if (mtype && mtype->info.raceid > 0 && mtype->info.bosstiaryRace == BosstiaryRarity_t::RARITY_ARCHFOE) {
+			for (const auto &spectator : Spectators().find<Player>(monster->getPosition(), true)) {
+				if (const auto &tmpPlayer = spectator->getPlayer()) {
+					tmpPlayer->sendBosstiaryCooldownTimer();
+				}
+			}
+		}
+
+		Lua::pushUserdata<Monster>(L, monster);
+		Lua::setMetatable(L, -1, "Monster");
+	} else {
+		if (isSummon) {
+			monster->setMaster(nullptr);
+		} else {
+		}
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int GameFunctions::luaGameCreateSoulPitMonster(lua_State* L) {
+	// Game.createSoulPitMonster(monsterName, position, [stack = 1, [, extended = false[, force = false[, master = nil]]]])
+	const auto &monster = Monster::createMonster(Lua::getString(L, 1));
+	if (!monster) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	bool isSummon = false;
+	if (lua_gettop(L) >= 6) {
+		if (const auto &master = Lua::getCreature(L, 6)) {
+			monster->setMaster(master, true);
+			isSummon = true;
+		}
+	}
+
+	const Position &position = Lua::getPosition(L, 2);
+	const uint8_t stack = Lua::getNumber<uint8_t>(L, 3, 1);
+	const bool extended = Lua::getBoolean(L, 4, false);
+	const bool force = Lua::getBoolean(L, 5, false);
+	if (g_game().placeCreature(monster, position, extended, force)) {
+		monster->setSoulPitStack(stack);
 		monster->onSpawn();
 		const auto &mtype = monster->getMonsterType();
 		if (mtype && mtype->info.raceid > 0 && mtype->info.bosstiaryRace == BosstiaryRarity_t::RARITY_ARCHFOE) {
@@ -992,5 +1039,27 @@ int GameFunctions::luaGameGetAchievements(lua_State* L) {
 		Lua::setField(L, "secret", achievement_it.second.secret);
 		lua_rawseti(L, -2, ++index);
 	}
+	return 1;
+}
+
+int GameFunctions::luaGameGetSoulCoreItems(lua_State* L) {
+	// Game.getSoulCoreItems()
+	std::vector<const ItemType*> soulCoreItems;
+
+	for (const auto &itemType : Item::items.getItems()) {
+		if (itemType.m_primaryType == "SoulCores" || itemType.type == ITEM_TYPE_SOULCORES) {
+			soulCoreItems.emplace_back(&itemType);
+		}
+	}
+
+	lua_createtable(L, soulCoreItems.size(), 0);
+
+	int index = 0;
+	for (const auto* itemType : soulCoreItems) {
+		Lua::pushUserdata<const ItemType>(L, itemType);
+		Lua::setMetatable(L, -1, "ItemType");
+		lua_rawseti(L, -2, ++index);
+	}
+
 	return 1;
 }
